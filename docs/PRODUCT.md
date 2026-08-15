@@ -44,6 +44,12 @@ language, factual preservation, omissions, CEFR fit, fluency, and tone. It must
 grow with production-derived and adversarial cases rather than becoming a static
 claim of language coverage.
 
+The quality baseline is a release gate, not a self-evaluation claim. Every human
+review row must be complete, factual safety gates must pass, and meaning, CEFR,
+fluency, and tone scores must each be at least 4 out of 5. A deterministic local
+summary reports failures and incomplete reviews; no provider model grades its
+own adaptation in this baseline.
+
 ## Explicit MVP non-goals
 
 The initial MVP does not include:

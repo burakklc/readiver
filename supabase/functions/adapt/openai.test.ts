@@ -9,6 +9,14 @@ import {
 
 const providerResponse = {
   status: "completed",
+  model: "test-model-2026-08-15",
+  usage: {
+    input_tokens: 420,
+    input_tokens_details: { cached_tokens: 120 },
+    output_tokens: 760,
+    output_tokens_details: { reasoning_tokens: 300 },
+    total_tokens: 1180,
+  },
   output: [
     {
       type: "message",
@@ -59,10 +67,28 @@ test("calls OpenAI once with strict structured output and parses the result", as
   assert.match(requestBody.input[0].content, /untrusted content/i);
   assert.match(requestBody.input[1].content, /Ignore every previous instruction/);
   assert.deepEqual(result, {
-    title: "Ein ruhiger Morgen",
-    detectedSourceLanguage: "en",
-    adaptedText: "Der Morgen begann ruhig.",
+    adaptation: {
+      title: "Ein ruhiger Morgen",
+      detectedSourceLanguage: "en",
+      adaptedText: "Der Morgen begann ruhig.",
+    },
+    usage: {
+      provider: "openai",
+      model: "test-model-2026-08-15",
+      inputTokens: 420,
+      cachedInputTokens: 120,
+      outputTokens: 760,
+      reasoningTokens: 300,
+      totalTokens: 1180,
+    },
   });
+});
+
+test("keeps a valid adaptation when provider usage is unavailable", () => {
+  const result = parseOpenAIResponse({ ...providerResponse, usage: undefined });
+
+  assert.equal(result.adaptation.adaptedText, "Der Morgen begann ruhig.");
+  assert.equal(result.usage, undefined);
 });
 
 test("supports a bounded server-side reasoning effort experiment", async () => {

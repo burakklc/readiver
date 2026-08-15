@@ -18,6 +18,7 @@ interface HumanReview {
   targetLanguagePass: null;
   noAddedFactsPass: null;
   noMaterialOmissionsPass: null;
+  unresolvedFactualConcern: null;
   meaningPreservation: null;
   cefrFit: null;
   fluency: null;
@@ -46,6 +47,7 @@ const emptyReview: HumanReview = {
   targetLanguagePass: null,
   noAddedFactsPass: null,
   noMaterialOmissionsPass: null,
+  unresolvedFactualConcern: null,
   meaningPreservation: null,
   cefrFit: null,
   fluency: null,
@@ -180,6 +182,7 @@ function buildReviewCsv(results: CaseResult[]): string {
     "targetLanguagePass",
     "noAddedFactsPass",
     "noMaterialOmissionsPass",
+    "unresolvedFactualConcern",
     "meaningPreservation_1_to_5",
     "cefrFit_1_to_5",
     "fluency_1_to_5",
@@ -197,6 +200,7 @@ function buildReviewCsv(results: CaseResult[]): string {
       result.sourceText,
       result.response?.adaptedText ?? "",
       result.expectedFacts.join(" | "),
+      "",
       "",
       "",
       "",

@@ -26,6 +26,21 @@ export interface ProviderAdaptation {
   adaptedText: string;
 }
 
+export interface ProviderUsage {
+  provider: "openai";
+  model: string;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  totalTokens: number;
+}
+
+export interface ProviderResult {
+  adaptation: ProviderAdaptation;
+  usage?: ProviderUsage;
+}
+
 export interface AdaptResponse extends ProviderAdaptation {
   id: string;
   sourceText: string;
@@ -42,5 +57,5 @@ export interface ApiErrorBody {
 }
 
 export interface AdaptProvider {
-  adapt(request: AdaptRequest): Promise<ProviderAdaptation>;
+  adapt(request: AdaptRequest): Promise<ProviderResult>;
 }

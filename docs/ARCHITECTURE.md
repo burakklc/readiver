@@ -45,6 +45,15 @@ Its validation, CEFR instruction contract, provider adapter, structured-output
 parsing, CORS policy, and safe logging remain server-side. It calls OpenAI once
 through the Responses API and does not persist the result.
 
+Successful provider responses expose token usage only to the internal backend
+boundary. Completion logs record request ID, source character count, target
+language, CEFR level, provider latency, model, input tokens, cached input tokens,
+output tokens, reasoning tokens, and total tokens. They never contain source or
+adapted text. Pricing is deliberately not hardcoded because provider rates can
+change; cost reporting applies the current rate to these measured tokens.
+OpenAI's `reasoningTokens` value is a diagnostic subset of `outputTokens`, so
+cost calculations must not add it a second time.
+
 ## Authentication boundary
 
 Supabase Auth issues sessions to clients. Clients may use the public Supabase URL

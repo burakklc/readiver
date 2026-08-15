@@ -48,6 +48,14 @@ instruction explicitly prohibits following embedded instructions, inventing
 facts, answering questions, adding opinions, or turning the result into a
 summary. Provider errors and malformed output are converted to safe API errors.
 
+The backend records the provider's exact input, cached input, output, reasoning,
+and total token counts with model and latency metadata. These values stay in
+server logs, are never returned to clients, and never include source or adapted
+text. Dollar cost is calculated outside the request path using current provider
+pricing rather than a hardcoded rate.
+`reasoningTokens` is already included in `outputTokens` and must not be billed a
+second time when these logs are analyzed.
+
 ## Prerequisites
 
 - Node.js 22 and npm 10
@@ -158,6 +166,9 @@ READIVER_EVAL_LABEL=sol-medium-v1 \
 
 See [`evals/adaptation-quality/README.md`](./evals/adaptation-quality/README.md)
 for coverage, focused runs, and the factual-preservation/CEFR review rubric.
+After reviewers fill the generated CSV, `npm run eval:review -- <csv-path>`
+creates an ignored deterministic summary and fails until every case passes the
+human quality gate.
 
 ## iOS foundation
 
@@ -170,6 +181,6 @@ call `/adapt` in this slice.
 - No account, saved library, or database persistence.
 - No trustworthy per-user quota until authentication exists; upstream 429s are
   safely translated, and Supabase/OpenAI project spend limits should be set.
-- Adaptation quality still needs a repeatable human evaluation set across
-  language pairs and CEFR levels.
+- The repeatable quality matrix and release gate exist, but native or highly
+  proficient human reviewers must still label all supported language directions.
 - Live scenarios require a configured Supabase project and OpenAI secret.

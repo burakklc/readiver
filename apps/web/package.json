@@ -12,7 +12,8 @@
     "test:backend": "node --test --experimental-strip-types ../../supabase/functions/adapt/*.test.ts",
     "test:evals": "node --test --experimental-strip-types ../../evals/adaptation-quality/*.test.ts",
     "test:web": "vitest run",
-    "eval:quality": "node --experimental-strip-types ../../evals/adaptation-quality/run.ts"
+    "eval:quality": "node --experimental-strip-types ../../evals/adaptation-quality/run.ts",
+    "eval:review": "node --experimental-strip-types ../../evals/adaptation-quality/review-cli.ts"
   },
   "dependencies": {
     "next": "^16.3.1",

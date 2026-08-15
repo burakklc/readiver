@@ -1,5 +1,11 @@
 import { ADAPTATION_SYSTEM_PROMPT, buildAdaptationInput } from "./prompt.ts";
-import type { AdaptProvider, AdaptRequest, ProviderAdaptation } from "./types.ts";
+import type {
+  AdaptProvider,
+  AdaptRequest,
+  ProviderAdaptation,
+  ProviderResult,
+  ProviderUsage,
+} from "./types.ts";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const reasoningEfforts = ["low", "medium"] as const;
@@ -48,6 +54,10 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
 export function validateProviderAdaptation(value: unknown): ProviderAdaptation {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new ProviderError("invalid_response");
@@ -77,13 +87,51 @@ export function validateProviderAdaptation(value: unknown): ProviderAdaptation {
   };
 }
 
-export function parseOpenAIResponse(value: unknown): ProviderAdaptation {
+function parseOpenAIUsage(response: Record<string, unknown>): ProviderUsage | undefined {
+  if (!isNonEmptyString(response.model)) return undefined;
+  if (typeof response.usage !== "object" || response.usage === null) return undefined;
+
+  const usage = response.usage as Record<string, unknown>;
+  if (
+    !isNonNegativeInteger(usage.input_tokens) ||
+    !isNonNegativeInteger(usage.output_tokens) ||
+    !isNonNegativeInteger(usage.total_tokens)
+  ) {
+    return undefined;
+  }
+
+  const inputDetails =
+    typeof usage.input_tokens_details === "object" && usage.input_tokens_details !== null
+      ? (usage.input_tokens_details as Record<string, unknown>)
+      : {};
+  const outputDetails =
+    typeof usage.output_tokens_details === "object" && usage.output_tokens_details !== null
+      ? (usage.output_tokens_details as Record<string, unknown>)
+      : {};
+  const cachedInputTokens = inputDetails.cached_tokens ?? 0;
+  const reasoningTokens = outputDetails.reasoning_tokens ?? 0;
+
+  if (!isNonNegativeInteger(cachedInputTokens) || !isNonNegativeInteger(reasoningTokens)) {
+    return undefined;
+  }
+
+  return {
+    provider: "openai",
+    model: response.model.trim(),
+    inputTokens: usage.input_tokens,
+    cachedInputTokens,
+    outputTokens: usage.output_tokens,
+    reasoningTokens,
+    totalTokens: usage.total_tokens,
+  };
+}
+
+export function parseOpenAIResponse(value: unknown): ProviderResult {
   if (typeof value !== "object" || value === null) {
     throw new ProviderError("invalid_response");
   }
 
-  const response = value as {
-    status?: unknown;
+  const response = value as Record<string, unknown> & {
     output?: Array<{ type?: unknown; content?: Array<Record<string, unknown>> }>;
   };
 
@@ -101,7 +149,10 @@ export function parseOpenAIResponse(value: unknown): ProviderAdaptation {
 
       if (content.type === "output_text" && isNonEmptyString(content.text)) {
         try {
-          return validateProviderAdaptation(JSON.parse(content.text));
+          return {
+            adaptation: validateProviderAdaptation(JSON.parse(content.text)),
+            usage: parseOpenAIUsage(response),
+          };
         } catch (cause) {
           if (cause instanceof ProviderError) throw cause;
           throw new ProviderError("invalid_response");
@@ -120,7 +171,7 @@ export function createOpenAIAdapter({
   fetcher = fetch,
 }: OpenAIAdapterOptions): AdaptProvider {
   return {
-    async adapt(request: AdaptRequest): Promise<ProviderAdaptation> {
+    async adapt(request: AdaptRequest): Promise<ProviderResult> {
       if (!apiKey) throw new ProviderError("unavailable");
 
       let response: Response;

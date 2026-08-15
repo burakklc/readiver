@@ -49,6 +49,10 @@ persisted document ID. The server trims surrounding source whitespace, detects
 the source language through the provider's structured output, adapts or
 translates the text, validates the response, and returns it.
 
+Provider token usage and model details are operational backend data. They are
+recorded in privacy-safe server logs and are not included in this public client
+response.
+
 ## Supported target languages
 
 The MVP accepts this documented BCP 47 subset:

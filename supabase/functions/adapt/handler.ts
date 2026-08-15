@@ -78,23 +78,30 @@ export function createHandler({
     }
 
     try {
+      const providerStartedAt = performance.now();
       const result = await provider.adapt(validation.value);
+      const usage = result.usage;
       logger.info("adapt.request_completed", {
         requestId,
         characterCount: validation.characterCount,
         targetLanguage: validation.value.targetLanguage,
         level: validation.value.level,
+        durationMs: Math.round(performance.now() - providerStartedAt),
+        usageRecorded: Boolean(usage),
+        ...(usage ?? {}),
       });
+
+      if (!usage) logger.warn("adapt.usage_unavailable", { requestId });
 
       return json(
         {
           id: crypto.randomUUID(),
-          title: result.title,
+          title: result.adaptation.title,
           sourceText: validation.value.text,
-          detectedSourceLanguage: result.detectedSourceLanguage,
+          detectedSourceLanguage: result.adaptation.detectedSourceLanguage,
           targetLanguage: validation.value.targetLanguage,
           level: validation.value.level,
-          adaptedText: result.adaptedText,
+          adaptedText: result.adaptation.adaptedText,
         },
         200,
         cors,

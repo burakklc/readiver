@@ -65,23 +65,37 @@ These checks catch contract failures, not linguistic quality.
 ## Human scorecard
 
 Review the generated CSV without changing the source or expected-fact columns.
-Use `true` or `false` for the three gates and integers from 1 to 5 for scored
-dimensions.
+Use `true` or `false` for the four gates and integers from 1 to 5 for scored
+dimensions. `unresolvedFactualConcern` must be `false` to pass.
 
 | Dimension | Meaning |
 | --- | --- |
 | Target language gate | The output is actually written in the requested language. |
 | No added facts gate | No unsupported facts, examples, opinions, or answers were introduced. |
 | No material omissions gate | All facts listed in `expectedFacts` remain represented. |
+| Unresolved factual concern gate | `true` means the reviewer found a factual concern that still needs resolution. |
 | Meaning preservation | 1 changes the author's intent; 5 preserves meaning completely. |
 | CEFR fit | 1 clearly misses the requested level; 5 is consistently appropriate. |
 | Fluency | 1 is broken or unnatural; 5 reads like careful native editing. |
 | Tone preservation | 1 materially changes tone; 5 preserves it where the level allows. |
 
-A case passes the baseline when all gates are `true`, every numerical score is
-at least 4, and reviewer notes contain no unresolved factual concern. Treat a
-single failed hallucination gate as a release blocker. Reviewers should cite a
-specific phrase when giving a score below 4.
+A case passes the baseline when the first three gates are `true`,
+`unresolvedFactualConcern` is `false`, and every numerical score is at least 4.
+Treat a single failed hallucination gate as a release blocker. Reviewers should
+cite a specific phrase when giving a score below 4.
+
+After filling the CSV, create a machine-readable summary and release decision:
+
+```sh
+cd apps/web
+npm run eval:review -- ../../evals/adaptation-quality/results/review-YOUR_RUN.csv
+```
+
+The command writes an ignored `review-...-summary.json` next to the CSV. It exits
+with status 0 only when every row is complete and passes, status 1 when a
+completed review fails, and status 2 while any row remains incomplete. The
+summary reports score averages and exact failed dimensions but never uses an AI
+model to judge its own output.
 
 Human review is the baseline authority. A future model grader may help scale
 pairwise comparisons only after its agreement is calibrated against these human
