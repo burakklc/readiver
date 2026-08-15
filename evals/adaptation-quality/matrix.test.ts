@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { QUALITY_CASES, SOURCE_FIXTURES } from "./cases.ts";
+import { LEVEL_SENSITIVITY_CASES, QUALITY_CASES, SOURCE_FIXTURES } from "./cases.ts";
 import { CEFR_LEVELS, SUPPORTED_LANGUAGES } from "../../supabase/functions/adapt/types.ts";
 
 test("covers every supported source and target language pair exactly once", () => {
@@ -37,4 +37,15 @@ test("keeps fixtures inside the product input limit with reviewable facts", () =
     assert.ok(fixture.expectedFacts.length >= 4);
     assert.ok(fixture.tags.length >= 2);
   }
+});
+
+test("compares one complex English to Turkish source across every CEFR level", () => {
+  assert.deepEqual(
+    LEVEL_SENSITIVITY_CASES.map(({ level }) => level),
+    [...CEFR_LEVELS],
+  );
+  assert.equal(new Set(LEVEL_SENSITIVITY_CASES.map(({ text }) => text)).size, 1);
+  assert.equal(new Set(LEVEL_SENSITIVITY_CASES.map(({ targetLanguage }) => targetLanguage)).size, 1);
+  assert.ok(LEVEL_SENSITIVITY_CASES.every(({ targetLanguage }) => targetLanguage === "tr"));
+  assert.ok(LEVEL_SENSITIVITY_CASES.every(({ tags }) => tags.includes("level-sensitivity")));
 });

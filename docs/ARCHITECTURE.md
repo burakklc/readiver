@@ -68,6 +68,13 @@ Authentication must be added before document saving, per-user quotas, or public
 commercial launch. All future user-owned operations continue to require a valid
 user session and RLS.
 
+Until authentication exists, the Edge Function applies a best-effort fixed-window
+limit keyed by an HMAC of the incoming network address. The raw address is not
+stored or logged. A security-definer Postgres function performs the counter
+update atomically in a private schema and is callable only with the server-side
+service role. This guard limits accidental or basic anonymous abuse, but network
+sharing and address rotation mean it cannot define premium entitlements.
+
 ## AI boundary
 
 AI credentials, prompts, provider choice, fallbacks, safety rules, usage
@@ -106,9 +113,12 @@ Clients translate codes into calm user-facing states and retain the user's input
 when retry is possible. Timeouts and provider failures are retryable only when
 safe; validation and authentication failures are not.
 
-The anonymous slice relies on provider and platform limits and translates
-upstream throttling into the stable `rate_limited` error. Distributed per-user
-rate limiting is deferred until authentication provides a trustworthy identity.
+The anonymous slice consumes its private Postgres allowance before invoking the
+provider and translates both anonymous and upstream throttling into the stable
+`rate_limited` error. It fails closed if the allowance service is unavailable so
+an infrastructure fault cannot create uncontrolled inference spend. Distributed
+per-user entitlement enforcement remains deferred until authentication provides
+a trustworthy identity.
 
 ## API principles
 

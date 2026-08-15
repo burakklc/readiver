@@ -18,6 +18,12 @@ The first matrix is a balanced baseline, not a claim that one example represents
 an entire language. Add production-derived and adversarial cases over time while
 keeping this baseline stable for regression comparisons.
 
+A separate level-sensitivity suite sends the same deliberately complex English
+source to Turkish at A1 through C2. It guards against the backend ignoring the
+selected level. It intentionally checks a complex fixture: identical results for
+an already-simple source are not automatically a defect because the target
+level must not force artificial complexity.
+
 ## Run
 
 From `apps/web`:
@@ -49,6 +55,19 @@ is ignored by Git.
 Always set `READIVER_EVAL_LABEL` when comparing provider configurations or
 prompt revisions. The label is stored with the run but is never sent to the
 adaptation endpoint.
+
+Run only the six-case level-sensitivity suite with:
+
+```sh
+READIVER_ADAPT_URL=https://YOUR_PROJECT_REF.supabase.co/functions/v1/adapt \
+READIVER_EVAL_SUITE=level-sensitivity \
+READIVER_EVAL_LABEL=sol-medium-level-sensitivity \
+  npm run eval:quality
+```
+
+The automated check requires at least three distinct normalized outputs and
+explicit differences between the lower and upper levels. Human review remains
+necessary to determine whether those differences are linguistically appropriate.
 
 ## Structural checks
 

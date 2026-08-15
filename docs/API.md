@@ -104,12 +104,19 @@ Stable error codes:
 | `400` | `text_too_long` | Source exceeds 8,000 Unicode characters |
 | `403` | `origin_not_allowed` | Browser origin is not configured server-side |
 | `405` | `method_not_allowed` | Method is not POST or OPTIONS |
-| `429` | `rate_limited` | Provider capacity or quota is temporarily limited |
+| `429` | `rate_limited` | Anonymous allowance or provider capacity is temporarily limited |
 | `502` | `invalid_provider_response` | Provider output failed server validation |
 | `503` | `provider_unavailable` | Provider, credentials, or network is unavailable |
+| `503` | `service_unavailable` | The anonymous allowance service is unavailable |
 
 Messages are human-safe. Errors never include prompts, provider response bodies,
 credentials, authorization headers, stack traces, or source text.
+
+The anonymous validation deployment defaults to 20 accepted adaptations per
+server-hashed network address per 86,400-second window. Validation failures do
+not consume an allowance. A rejected request returns `Retry-After`; deployments
+may tune both values through server-only configuration. This is abuse and cost
+protection, not a user entitlement or billing counter.
 
 ## CORS
 

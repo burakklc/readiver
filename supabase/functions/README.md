@@ -11,6 +11,15 @@ defaults to `gpt-5.6-sol` with medium reasoning effort; local origins are allowe
 by default.
 Production deployments must set the exact deployed web origin.
 
+Before invoking OpenAI, the hosted function consumes an anonymous allowance
+through the protected `check_adapt_rate_limit` database RPC. Supabase supplies
+`SUPABASE_URL` and `SUPABASE_SECRET_KEYS` to current hosted functions; the code
+retains `SUPABASE_SERVICE_ROLE_KEY` as a legacy-project fallback. Optional
+`ANONYMOUS_RATE_LIMIT_MAX_REQUESTS` and
+`ANONYMOUS_RATE_LIMIT_WINDOW_SECONDS` values default to 20 and 86,400. The
+database stores only a server-keyed HMAC, never the raw network address. Apply
+repository migrations before deploying the function.
+
 Run backend unit tests from `apps/web` with `npm run test:backend`. These tests
 mock the provider and never spend API credits.
 

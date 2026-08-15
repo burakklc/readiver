@@ -44,6 +44,14 @@ language, factual preservation, omissions, CEFR fit, fluency, and tone. It must
 grow with production-derived and adversarial cases rather than becoming a static
 claim of language coverage.
 
+CEFR is a readability target and ceiling. The system should not make an already
+simple source unnaturally ornate merely because C1 or C2 is selected, so very
+simple inputs may produce similar or even identical results at several levels.
+For sufficiently complex input, however, lower and upper levels should show
+meaningful differences in vocabulary, grammar, and sentence structure. A fixed
+A1–C2 level-sensitivity fixture monitors that distinction separately from the
+balanced direction matrix.
+
 The quality baseline is a release gate, not a self-evaluation claim. Every human
 review row must be complete, factual safety gates must pass, and meaning, CEFR,
 fluency, and tone scores must each be at least 4 out of 5. A deterministic local

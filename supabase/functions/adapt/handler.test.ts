@@ -129,3 +129,66 @@ test("logs operational usage without logging source or adapted text", async () =
   assert.equal(completion[1].characterCount, 36);
   assert.doesNotMatch(JSON.stringify(infoEvents), /Kaydedilmemesi|Gizli başlık/);
 });
+
+test("does not call the provider after the anonymous limit is reached", async () => {
+  let providerCalls = 0;
+  const handler = createHandler({
+    logger,
+    rateLimiter: {
+      async check() {
+        return { allowed: false, remaining: 0, retryAfterSeconds: 321 };
+      },
+    },
+    provider: {
+      async adapt() {
+        providerCalls += 1;
+        throw new Error("provider must not be called");
+      },
+    },
+  });
+
+  const response = await handler(
+    new Request("http://localhost/adapt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: "Source", targetLanguage: "tr", level: "A1" }),
+    }),
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get("Retry-After"), "321");
+  assert.equal(body.error.code, "rate_limited");
+  assert.equal(providerCalls, 0);
+});
+
+test("fails closed when the anonymous limit service is unavailable", async () => {
+  let providerCalls = 0;
+  const handler = createHandler({
+    logger,
+    rateLimiter: {
+      async check() {
+        throw new Error("database unavailable");
+      },
+    },
+    provider: {
+      async adapt() {
+        providerCalls += 1;
+        throw new Error("provider must not be called");
+      },
+    },
+  });
+
+  const response = await handler(
+    new Request("http://localhost/adapt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: "Source", targetLanguage: "tr", level: "A1" }),
+    }),
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 503);
+  assert.equal(body.error.code, "service_unavailable");
+  assert.equal(providerCalls, 0);
+});

@@ -1,7 +1,11 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { QUALITY_CASES, type QualityCase } from "./cases.ts";
+import {
+  LEVEL_SENSITIVITY_CASES,
+  QUALITY_CASES,
+  type QualityCase,
+} from "./cases.ts";
 import type { AdaptResponse } from "../../supabase/functions/adapt/types.ts";
 
 interface StructuralChecks {
@@ -224,6 +228,16 @@ async function main(): Promise<void> {
   }
   const endpointUrl: string = endpoint;
 
+  const suite = process.env.READIVER_EVAL_SUITE?.trim() || "matrix";
+  if (!new Set(["matrix", "level-sensitivity", "all"]).has(suite)) {
+    throw new Error("READIVER_EVAL_SUITE must be matrix, level-sensitivity, or all.");
+  }
+  const suiteCases =
+    suite === "matrix"
+      ? QUALITY_CASES
+      : suite === "level-sensitivity"
+        ? LEVEL_SENSITIVITY_CASES
+        : [...QUALITY_CASES, ...LEVEL_SENSITIVITY_CASES];
   const requestedIds = new Set(
     (process.env.READIVER_EVAL_CASES ?? "")
       .split(",")
@@ -231,8 +245,8 @@ async function main(): Promise<void> {
       .filter(Boolean),
   );
   const cases = requestedIds.size
-    ? QUALITY_CASES.filter(({ id }) => requestedIds.has(id))
-    : QUALITY_CASES;
+    ? suiteCases.filter(({ id }) => requestedIds.has(id))
+    : suiteCases;
 
   if (requestedIds.size && cases.length !== requestedIds.size) {
     const found = new Set(cases.map(({ id }) => id));
@@ -267,6 +281,28 @@ async function main(): Promise<void> {
   );
   const finishedAt = new Date();
   const structuralPasses = results.filter(({ structuralPass }) => structuralPass).length;
+  const sensitivityResults = results.filter(({ tags }) => tags.includes("level-sensitivity"));
+  const sensitivityOutputs = new Map(
+    sensitivityResults.map(({ level, response }) => [
+      level,
+      response?.adaptedText.trim().replaceAll(/\s+/g, " ").toLocaleLowerCase("tr") ?? "",
+    ]),
+  );
+  const levelSensitivity =
+    sensitivityResults.length === 6
+      ? {
+          uniqueOutputCount: new Set(sensitivityOutputs.values()).size,
+          a1DiffersFromC1: sensitivityOutputs.get("A1") !== sensitivityOutputs.get("C1"),
+          a1DiffersFromC2: sensitivityOutputs.get("A1") !== sensitivityOutputs.get("C2"),
+          a2DiffersFromC1: sensitivityOutputs.get("A2") !== sensitivityOutputs.get("C1"),
+        }
+      : null;
+  const levelSensitivityPass =
+    !levelSensitivity ||
+    (levelSensitivity.uniqueOutputCount >= 3 &&
+      levelSensitivity.a1DiffersFromC1 &&
+      levelSensitivity.a1DiffersFromC2 &&
+      levelSensitivity.a2DiffersFromC1);
   const stamp = startedAt.toISOString().replaceAll(":", "-").replaceAll(".", "-");
   const outputDirectory = path.resolve(
     process.env.READIVER_EVAL_OUTPUT_DIR ??
@@ -283,11 +319,14 @@ async function main(): Promise<void> {
         startedAt: startedAt.toISOString(),
         finishedAt: finishedAt.toISOString(),
         endpoint: endpointUrl,
+        suite,
         configurationLabel: process.env.READIVER_EVAL_LABEL?.trim() || "unlabelled",
         model: "server-configured",
         caseCount: results.length,
         structuralPasses,
         structuralFailures: results.length - structuralPasses,
+        levelSensitivity,
+        levelSensitivityPass,
         results,
       },
       null,
@@ -299,7 +338,7 @@ async function main(): Promise<void> {
   process.stdout.write(
     `Structural checks: ${structuralPasses}/${results.length} passed\nJSON: ${jsonPath}\nReview CSV: ${csvPath}\n`,
   );
-  if (structuralPasses !== results.length) process.exitCode = 1;
+  if (structuralPasses !== results.length || !levelSensitivityPass) process.exitCode = 1;
 }
 
 await main();

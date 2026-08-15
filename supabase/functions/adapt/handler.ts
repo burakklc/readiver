@@ -1,4 +1,5 @@
 import { ProviderError } from "./openai.ts";
+import type { RateLimiter } from "./rate-limit.ts";
 import { validateAdaptRequest } from "./validation.ts";
 import type { AdaptProvider, ApiErrorBody } from "./types.ts";
 
@@ -8,6 +9,7 @@ interface HandlerOptions {
   provider: AdaptProvider;
   allowedOrigins?: string[];
   logger?: Pick<Console, "info" | "warn" | "error">;
+  rateLimiter?: RateLimiter;
 }
 
 function json(body: unknown, status: number, headers: HeadersInit): Response {
@@ -36,6 +38,7 @@ export function createHandler({
   provider,
   allowedOrigins = defaultOrigins,
   logger = console,
+  rateLimiter,
 }: HandlerOptions): (request: Request) => Promise<Response> {
   return async (request: Request): Promise<Response> => {
     const requestId = crypto.randomUUID();
@@ -75,6 +78,43 @@ export function createHandler({
         field: validation.body.error.details?.field,
       });
       return json(validation.body, validation.status, cors);
+    }
+
+    if (rateLimiter) {
+      try {
+        const decision = await rateLimiter.check(request);
+        logger.info("adapt.rate_limit_checked", {
+          requestId,
+          allowed: decision.allowed,
+          remaining: decision.remaining,
+        });
+
+        if (!decision.allowed) {
+          logger.warn("adapt.rate_limit_exceeded", { requestId });
+          return json(
+            apiError(
+              "rate_limited",
+              "You have reached today's anonymous adaptation limit. Please try again later.",
+            ),
+            429,
+            {
+              ...cors,
+              "Access-Control-Expose-Headers": "Retry-After",
+              "Retry-After": String(Math.max(decision.retryAfterSeconds, 1)),
+            },
+          );
+        }
+      } catch {
+        logger.error("adapt.rate_limit_failure", { requestId });
+        return json(
+          apiError(
+            "service_unavailable",
+            "Adaptation is temporarily unavailable. Please try again shortly.",
+          ),
+          503,
+          cors,
+        );
+      }
     }
 
     try {

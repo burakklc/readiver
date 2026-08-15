@@ -32,6 +32,8 @@ docs/                           Product, brand, architecture, and API sources of
 - Cross-language requests translate and adapt in one provider call.
 - Results are validated structured JSON and are not persisted.
 - The original remains in browser state behind a minimal disclosure.
+- Anonymous access is limited to 20 accepted adaptations per network address in
+  a fixed, deployment-configured 24-hour window by default.
 
 ## AI provider
 
@@ -83,6 +85,8 @@ OPENAI_API_KEY=YOUR_SERVER_ONLY_KEY
 OPENAI_MODEL=gpt-5.6-sol
 OPENAI_REASONING_EFFORT=medium
 ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+ANONYMOUS_RATE_LIMIT_MAX_REQUESTS=20
+ANONYMOUS_RATE_LIMIT_WINDOW_SECONDS=86400
 ```
 
 The OpenAI key must exist only in local function env files or Supabase secrets.
@@ -128,13 +132,17 @@ After logging in and linking the intended Supabase project:
 ```sh
 supabase login
 supabase link --project-ref YOUR_PROJECT_REF
+supabase db push
 supabase secrets set OPENAI_API_KEY=YOUR_KEY OPENAI_MODEL=gpt-5.6-sol OPENAI_REASONING_EFFORT=medium ALLOWED_ORIGINS=https://YOUR_WEB_DOMAIN
 supabase functions deploy adapt --no-verify-jwt
 ```
 
 The endpoint is then
 `https://YOUR_PROJECT_REF.supabase.co/functions/v1/adapt`. The function is
-anonymous for this validation slice and does not touch user-owned tables.
+anonymous for this validation slice and does not touch user-owned tables. It
+uses Supabase's server-only service-role credential to atomically consume an
+allowance from the private rate-limit table before calling OpenAI. Raw network
+addresses are never stored.
 
 ## Validation
 
@@ -170,6 +178,12 @@ After reviewers fill the generated CSV, `npm run eval:review -- <csv-path>`
 creates an ignored deterministic summary and fails until every case passes the
 human quality gate.
 
+For a focused CEFR sensitivity check, the suite also sends one deliberately
+complex source to Turkish at every A1–C2 level and fails if the upper and lower
+levels collapse to identical output. A simple source may legitimately remain
+similar across levels because CEFR is a readability target, not an instruction
+to inflate already-simple writing.
+
 ## iOS foundation
 
 Open `apps/ios/Readiver.xcodeproj`, select the `Readiver` scheme and an iOS
@@ -179,8 +193,10 @@ call `/adapt` in this slice.
 ## Known limitations
 
 - No account, saved library, or database persistence.
-- No trustworthy per-user quota until authentication exists; upstream 429s are
-  safely translated, and Supabase/OpenAI project spend limits should be set.
+- The anonymous network-address limit is a cost-safety guard, not a trustworthy
+  per-user entitlement. Authentication is still required for user quotas,
+  premium plans, and commercial launch; Supabase/OpenAI spend limits should
+  remain configured.
 - The repeatable quality matrix and release gate exist, but native or highly
   proficient human reviewers must still label all supported language directions.
 - Live scenarios require a configured Supabase project and OpenAI secret.

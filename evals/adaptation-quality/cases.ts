@@ -107,3 +107,23 @@ export const QUALITY_CASES: readonly QualityCase[] = SOURCE_FIXTURES.flatMap(
       };
     }),
 );
+
+const LEVEL_SENSITIVITY_SOURCE: SourceFixture = {
+  code: "en",
+  name: "English",
+  text: "Although the regional council had initially dismissed the engineers' warning as unnecessarily cautious, it reversed its decision after a second inspection revealed that prolonged rainfall had gradually weakened the bridge's foundations. The council did not close the bridge immediately; instead, it restricted heavy vehicles, commissioned weekly measurements, and promised to publish the results until permanent repairs could begin in October.",
+  expectedFacts: [
+    "The council initially dismissed the engineers' warning.",
+    "A second inspection found that prolonged rain had weakened the bridge foundations.",
+    "The bridge stayed open but heavy vehicles were restricted.",
+    "Weekly measurements and publication continue until permanent repairs begin in October.",
+  ],
+  tags: ["level-sensitivity", "chronology", "cause-and-effect", "modality"],
+};
+
+export const LEVEL_SENSITIVITY_CASES: readonly QualityCase[] = CEFR_LEVELS.map((level) => ({
+  ...LEVEL_SENSITIVITY_SOURCE,
+  id: `level-sensitivity-en-tr-${level.toLowerCase()}`,
+  targetLanguage: "tr",
+  level,
+}));
