@@ -40,12 +40,24 @@ prompts, chooses the AI provider, enforces usage limits, records necessary
 operational request data, calls the provider, and persists successful documents.
 The backend is the source of truth for adaptation behavior.
 
+The first validation slice implements `/adapt` as one Supabase Edge Function.
+Its validation, CEFR instruction contract, provider adapter, structured-output
+parsing, CORS policy, and safe logging remain server-side. It calls OpenAI once
+through the Responses API and does not persist the result.
+
 ## Authentication boundary
 
 Supabase Auth issues sessions to clients. Clients may use the public Supabase URL
 and anon key; authorization depends on the user's JWT and database RLS, not on
 the anon key being secret. Privileged keys remain server-only. Edge Functions
 must validate the authenticated user before accessing user-owned data.
+
+The initial quality-validation slice is an explicit exception: `/adapt` accepts
+anonymous requests and does not read or write user-owned data. The web client
+sends the public Supabase anon key for gateway access, not as a user identity.
+Authentication must be added before document saving, per-user quotas, or public
+commercial launch. All future user-owned operations continue to require a valid
+user session and RLS.
 
 ## AI boundary
 
@@ -64,6 +76,9 @@ records. Clients may later add local caches for responsiveness, but conflicts ar
 resolved against server timestamps and server state. Offline-first editing and
 complex conflict resolution are outside the MVP.
 
+Anonymous adaptations are transient. The Edge Function returns a request-scoped
+UUID for contract compatibility, but no document row is created in this slice.
+
 ## Environment handling
 
 Safe client configuration is limited to the Supabase project URL and anon key.
@@ -81,6 +96,10 @@ not leak prompts, provider responses, stack traces, keys, or internal IDs.
 Clients translate codes into calm user-facing states and retain the user's input
 when retry is possible. Timeouts and provider failures are retryable only when
 safe; validation and authentication failures are not.
+
+The anonymous slice relies on provider and platform limits and translates
+upstream throttling into the stable `rate_limited` error. Distributed per-user
+rate limiting is deferred until authentication provides a trustworthy identity.
 
 ## API principles
 

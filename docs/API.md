@@ -1,21 +1,24 @@
 # Readiver API
 
-This document defines the initial product-level HTTP contract. Only `POST
-/adapt` is planned for the first vertical slice. Document endpoints are reserved
-for the minimal saved-reading flow and need not be implemented in the
-foundation.
-
-JSON field names use camelCase. Text is UTF-8. Successful responses use the
-resource directly; errors use the common envelope below.
+This document defines the initial product-level HTTP contract. JSON field names
+use camelCase and text is UTF-8. Successful responses use the resource directly;
+errors use the common envelope below.
 
 ## Adapt text
 
+The public product route is conceptually `POST /adapt`. The first deployment is
+a Supabase Edge Function and is reached at:
+
 ```http
-POST /adapt
-Authorization: Bearer <supabase-access-token>
+POST {SUPABASE_URL}/functions/v1/adapt
+Authorization: Bearer <supabase-anon-key>
+apikey: <supabase-anon-key>
 Content-Type: application/json
-Idempotency-Key: <client-generated-unique-value>
 ```
+
+The anon key grants project gateway access; it is not an authenticated user
+session. This first quality-validation slice requires no account and creates no
+database record.
 
 Request:
 
@@ -27,7 +30,7 @@ Request:
 }
 ```
 
-Successful response (`201 Created`):
+Successful response (`200 OK`):
 
 ```json
 {
@@ -41,33 +44,35 @@ Successful response (`201 Created`):
 }
 ```
 
-The server authenticates the caller, validates the request, adapts the text,
-persists the source and result as one user-owned document, and returns it. The
-contract does not expose AI models, prompts, or provider response formats.
+The returned ID is request-scoped and future-compatible; it is not currently a
+persisted document ID. The server trims surrounding source whitespace, detects
+the source language through the provider's structured output, adapts or
+translates the text, validates the response, and returns it.
 
-## Saved documents (future-compatible)
+## Supported target languages
 
-```http
-GET /documents
-GET /documents/:id
-DELETE /documents/:id
-```
+The MVP accepts this documented BCP 47 subset:
 
-`GET /documents` returns the authenticated user's documents in reverse creation
-order. Pagination details should be added when the endpoint is implemented,
-based on observed needs rather than speculated now. `GET /documents/:id`
-returns one owned document. `DELETE /documents/:id` removes one owned document
-and should return `204 No Content`. A missing document and a document owned by a
-different user should both avoid revealing another user's data.
+| Code | Language |
+| --- | --- |
+| `en` | English |
+| `de` | German |
+| `es` | Spanish |
+| `fr` | French |
+| `it` | Italian |
+| `tr` | Turkish |
+
+Source text may be in another language if the configured model can detect and
+adapt it. `level` is exactly one of `A1`, `A2`, `B1`, `B2`, `C1`, or `C2`.
 
 ## Validation
 
 - `text` is required, must be a string, and must contain non-whitespace content.
-- `targetLanguage` is required and uses a documented, supported BCP 47 language
-  tag subset. The backend, not each client, owns the supported list.
-- `level` is exactly one of `A1`, `A2`, `B1`, `B2`, `C1`, or `C2`.
-- Unknown fields may be rejected to surface client contract drift early.
-- Route IDs must be valid UUIDs.
+- Surrounding whitespace is trimmed before adaptation and in the response.
+- `text` may contain at most 8,000 Unicode code points. It is never truncated.
+- `targetLanguage` must be one of the supported codes above.
+- `level` must be one of the six documented CEFR levels.
+- Unknown fields are rejected to surface contract drift early.
 
 Client validation improves feedback but never replaces server validation.
 
@@ -77,7 +82,7 @@ Client validation improves feedback but never replaces server validation.
 {
   "error": {
     "code": "invalid_request",
-    "message": "The request could not be processed.",
+    "message": "Paste some text before adapting it.",
     "details": {
       "field": "text"
     }
@@ -85,38 +90,38 @@ Client validation improves feedback but never replaces server validation.
 }
 ```
 
-`code` is stable and machine-readable. `message` is safe to display or map to
-client copy. `details` is optional and must not expose prompts, provider output,
-credentials, stack traces, or other users' information. Use conventional HTTP
-statuses: `400` invalid input, `401` missing/invalid authentication, `404`
-unknown owned resource, `409` idempotency conflict, `429` usage limit, and `5xx`
-for unavailable server-side work.
+Stable error codes:
 
-## Authentication and ownership
+| HTTP | Code | Meaning |
+| --- | --- | --- |
+| `400` | `invalid_request` | Malformed JSON, empty text, or unknown field |
+| `400` | `unsupported_language` | Target language is outside the MVP set |
+| `400` | `unsupported_level` | CEFR level is invalid |
+| `400` | `text_too_long` | Source exceeds 8,000 Unicode characters |
+| `403` | `origin_not_allowed` | Browser origin is not configured server-side |
+| `405` | `method_not_allowed` | Method is not POST or OPTIONS |
+| `429` | `rate_limited` | Provider capacity or quota is temporarily limited |
+| `502` | `invalid_provider_response` | Provider output failed server validation |
+| `503` | `provider_unavailable` | Provider, credentials, or network is unavailable |
 
-All endpoints require a valid Supabase access token. The server derives the user
-ID from that token; clients never choose `user_id`. Database RLS provides a
-second ownership boundary. The Supabase anon key identifies the project and is
-safe client configuration, but it does not replace the user's access token.
+Messages are human-safe. Errors never include prompts, provider response bodies,
+credentials, authorization headers, stack traces, or source text.
 
-## Idempotency
+## CORS
 
-`POST /adapt` is expensive and creates data, so production clients should send a
-unique `Idempotency-Key` for each intentional adaptation. The server should
-return the original response when the same authenticated user repeats the same
-key and equivalent request. Reusing a key with a different payload should return
-`409`. Persistence for idempotency is deferred until `/adapt` is implemented so
-the schema follows the actual function design. Reads are naturally idempotent;
-repeating a document delete should not expose ownership information.
+Browser origins must exactly match the comma-separated `ALLOWED_ORIGINS` Edge
+Function secret. Localhost and `127.0.0.1` on port 3000 are the development
+defaults. Production must configure its deployed web origin explicitly.
 
-## Character and rate limits
+## Idempotency and persistence
 
-The server must enforce a Unicode-aware source character limit before calling an
-AI provider. The exact limit should be selected and documented during the first
-vertical slice after testing latency, quality, and cost; clients should consume
-that shared limit rather than invent different ones. Return a field-level `400`
-when exceeded.
+This slice performs one provider call per accepted request and creates no server
+resource, so it does not yet implement idempotency storage. The UI disables
+repeat submission while a request is in flight. An authenticated, persisted
+future version must add per-user idempotency before document creation.
 
-Rate limits should be applied per authenticated user, with conservative global
-protection and a `Retry-After` header on `429` responses. Concrete quotas belong
-to server configuration and product policy, not hard-coded client behavior.
+## Saved documents (future)
+
+`GET /documents`, `GET /documents/:id`, and `DELETE /documents/:id` remain
+reserved for the authenticated saved-reading flow. They are not implemented in
+this slice.

@@ -4,7 +4,7 @@ import "./styles.css";
 
 export const metadata: Metadata = {
   title: "Readiver",
-  description: "Read anything at your level.",
+  description: "Turn real-world writing into reading at your language level.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

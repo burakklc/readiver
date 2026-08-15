@@ -26,6 +26,17 @@ The original text is retained with the adaptation. A minimal saved-reading model
 supports later retrieval and cross-client sync through one authenticated
 account. Rich library management is not part of the first release.
 
+## First validation slice
+
+The first working slice intentionally validates adaptation quality before account
+or library behavior. It supports anonymous, non-persisted adaptations on the web
+for English, German, Spanish, French, Italian, and Turkish. The reader keeps the
+original text in browser state so it can be inspected alongside the result.
+
+This slice does not change the longer-term authenticated saved-reading model.
+Authentication and persistence begin only after adaptation quality is measured
+with representative content and CEFR levels.
+
 ## Explicit MVP non-goals
 
 The initial MVP does not include:
