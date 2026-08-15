@@ -8,9 +8,11 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:backend && npm run test:web",
+    "test": "npm run test:backend && npm run test:evals && npm run test:web",
     "test:backend": "node --test --experimental-strip-types ../../supabase/functions/adapt/*.test.ts",
-    "test:web": "vitest run"
+    "test:evals": "node --test --experimental-strip-types ../../evals/adaptation-quality/*.test.ts",
+    "test:web": "vitest run",
+    "eval:quality": "node --experimental-strip-types ../../evals/adaptation-quality/run.ts"
   },
   "dependencies": {
     "next": "^16.3.1",

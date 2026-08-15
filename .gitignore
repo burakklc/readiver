@@ -23,3 +23,6 @@ build/
 # Supabase local state
 supabase/.branches/
 supabase/.temp/
+
+# Generated adaptation quality runs
+evals/adaptation-quality/results/

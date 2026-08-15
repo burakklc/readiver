@@ -36,13 +36,14 @@ docs/                           Product, brand, architecture, and API sources of
 ## AI provider
 
 The Edge Function uses OpenAI's Responses API with strict JSON Schema Structured
-Outputs. The default model is `gpt-5.6-terra`, selected for its balance of
-adaptation quality and cost, multilingual text support, and strict structured
-outputs. `OPENAI_MODEL` keeps this a server-side deployment choice; changing it
-does not affect the web contract.
+Outputs. The quality-validation model is `gpt-5.6-sol` with medium reasoning
+effort. It was selected after a balanced Terra baseline and focused Sol/Terra
+comparison exposed material improvements in low-level German, Turkish, and
+French editing. `OPENAI_MODEL` and `OPENAI_REASONING_EFFORT` keep this a
+server-side deployment choice; changing them does not affect the web contract.
 
-The provider request uses `store: false`, low reasoning effort, and one model
-call per adaptation. Source text is passed as untrusted data. The system
+The provider request uses `store: false` and one model call per adaptation.
+Source text is passed as untrusted data. The system
 instruction explicitly prohibits following embedded instructions, inventing
 facts, answering questions, adding opinions, or turning the result into a
 summary. Provider errors and malformed output are converted to safe API errors.
@@ -71,7 +72,8 @@ Edge Function secrets:
 
 ```sh
 OPENAI_API_KEY=YOUR_SERVER_ONLY_KEY
-OPENAI_MODEL=gpt-5.6-terra
+OPENAI_MODEL=gpt-5.6-sol
+OPENAI_REASONING_EFFORT=medium
 ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
 
@@ -97,7 +99,7 @@ supabase start
 supabase functions serve adapt --env-file supabase/.env.local --no-verify-jwt
 ```
 
-Create the ignored `supabase/.env.local` yourself with the three server values
+Create the ignored `supabase/.env.local` yourself with the four server values
 shown above. Use the local URL and anon key printed by `supabase status` in
 `apps/web/.env.local`.
 
@@ -118,7 +120,7 @@ After logging in and linking the intended Supabase project:
 ```sh
 supabase login
 supabase link --project-ref YOUR_PROJECT_REF
-supabase secrets set OPENAI_API_KEY=YOUR_KEY OPENAI_MODEL=gpt-5.6-terra ALLOWED_ORIGINS=https://YOUR_WEB_DOMAIN
+supabase secrets set OPENAI_API_KEY=YOUR_KEY OPENAI_MODEL=gpt-5.6-sol OPENAI_REASONING_EFFORT=medium ALLOWED_ORIGINS=https://YOUR_WEB_DOMAIN
 supabase functions deploy adapt --no-verify-jwt
 ```
 
@@ -139,6 +141,23 @@ npm run build
 
 Backend tests use a mocked provider and spend no OpenAI credits. Web tests cover
 the disabled CTA, language and level selection, reader transition, and errors.
+
+## Adaptation quality evaluation
+
+The repository includes a balanced live evaluation matrix covering all 36
+directions between the six supported languages, with A1–C2 represented equally.
+It calls the deployed Readiver backend rather than the provider directly and
+produces ignored JSON results plus a human-review CSV:
+
+```sh
+cd apps/web
+READIVER_ADAPT_URL=https://YOUR_PROJECT_REF.supabase.co/functions/v1/adapt \
+READIVER_EVAL_LABEL=sol-medium-v1 \
+  npm run eval:quality
+```
+
+See [`evals/adaptation-quality/README.md`](./evals/adaptation-quality/README.md)
+for coverage, focused runs, and the factual-preservation/CEFR review rubric.
 
 ## iOS foundation
 

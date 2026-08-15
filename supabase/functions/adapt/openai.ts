@@ -2,6 +2,9 @@ import { ADAPTATION_SYSTEM_PROMPT, buildAdaptationInput } from "./prompt.ts";
 import type { AdaptProvider, AdaptRequest, ProviderAdaptation } from "./types.ts";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+const reasoningEfforts = ["low", "medium"] as const;
+
+export type OpenAIReasoningEffort = (typeof reasoningEfforts)[number];
 
 const adaptationSchema = {
   type: "object",
@@ -31,7 +34,14 @@ type Fetcher = (input: string | URL | Request, init?: RequestInit) => Promise<Re
 interface OpenAIAdapterOptions {
   apiKey: string;
   model?: string;
+  reasoningEffort?: OpenAIReasoningEffort;
   fetcher?: Fetcher;
+}
+
+export function parseOpenAIReasoningEffort(value: string | undefined): OpenAIReasoningEffort {
+  return reasoningEfforts.includes(value as OpenAIReasoningEffort)
+    ? (value as OpenAIReasoningEffort)
+    : "medium";
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -105,7 +115,8 @@ export function parseOpenAIResponse(value: unknown): ProviderAdaptation {
 
 export function createOpenAIAdapter({
   apiKey,
-  model = "gpt-5.6-terra",
+  model = "gpt-5.6-sol",
+  reasoningEffort = "medium",
   fetcher = fetch,
 }: OpenAIAdapterOptions): AdaptProvider {
   return {
@@ -123,7 +134,7 @@ export function createOpenAIAdapter({
           body: JSON.stringify({
             model,
             store: false,
-            reasoning: { effort: "low" },
+            reasoning: { effort: reasoningEffort },
             max_output_tokens: 12_000,
             input: [
               { role: "system", content: ADAPTATION_SYSTEM_PROMPT },

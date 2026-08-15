@@ -37,6 +37,13 @@ This slice does not change the longer-term authenticated saved-reading model.
 Authentication and persistence begin only after adaptation quality is measured
 with representative content and CEFR levels.
 
+Quality measurement begins with an equal baseline across all 36 directions
+between the six supported languages. The baseline distributes A1 through C2
+evenly and combines automated contract checks with a human scorecard for target
+language, factual preservation, omissions, CEFR fit, fluency, and tone. It must
+grow with production-derived and adversarial cases rather than becoming a static
+claim of language coverage.
+
 ## Explicit MVP non-goals
 
 The initial MVP does not include:
