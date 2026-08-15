@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Environment files (keep the example)
+.env
+.env.*
+!.env.example
+
+# Web
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# iOS / Xcode
+DerivedData/
+build/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcuserstate
+
+# Supabase local state
+supabase/.branches/
+supabase/.temp/
